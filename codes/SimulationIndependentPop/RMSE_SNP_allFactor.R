@@ -1,0 +1,64 @@
+data_path = commandArgs(t=T)[1]
+nTraits = as.numeric(commandArgs(t=T)[2]) #2 or 18
+nFactors = as.numeric(commandArgs(t=T)[3]) # 2 or 6 or 9
+nSNPs = as.numeric(commandArgs(t=T)[4])
+folder = commandArgs(t=T)[5]
+n_repeat = as.numeric(commandArgs(t=T)[6])
+
+library(ROCR)
+library(data.table)
+library(ggplot2)
+
+print(sprintf("nTraits = %d", nTraits))
+print(sprintf("nFactors = %d", nFactors))
+print(sprintf("nSNPs = %d", nSNPs))
+print(sprintf("folder = %s", folder))
+print(sprintf("n_replicate = %d", n_repeat))
+
+########################## S1
+allFactor_SNPEffect_RMSE = function(nFactors, nTraits, n_replicates, nSNPs, folder = folder){
+  
+  Simulation_Folder = sprintf("%s/%s/%dfactor_%dtrait_%dsnp_0.95h2F", data_path, folder, nFactors, nTraits, nSNPs)
+  print(Simulation_Folder)
+  
+  p = 2000
+  K = 10
+  
+  RMSE_SNP = rep(0,n_replicates)
+  
+  
+  for (r in 1:n_replicates){
+    
+    runID = sprintf("%s/MegaBayesC_%dFactors_%dTraits_rep%d", Simulation_Folder,nFactors,nTraits,r)
+    
+    # posterior mean of marker effects
+    B2F_PosteriorMean = read.csv(sprintf('%s/Posterior/Posterior_B2_F.csv',runID))
+    B2F_PosteriorMean = B2F_PosteriorMean[,-c(1)]
+    head(B2F_PosteriorMean)
+    
+    # true QTL position
+    trueQTL_position = as.data.frame(fread(sprintf("%s/QTLpos_rep%d.csv",Simulation_Folder,r))[,-1])
+
+    estLambda = as.matrix(fread(sprintf('%s/Posterior/Posterior_Lambda.csv',runID))[,-1])
+    TrueLambda = as.matrix(fread(sprintf("%s/TrueLambda_%dfactors_%dtraits_rep%d.csv", Simulation_Folder, nFactors, nTraits, r))[,-1])
+    
+    # estimated marker effects 
+    B2F_star = as.matrix(B2F_PosteriorMean) %*% estLambda[,1]   ### focal trait index = 1 
+    
+    true.ME.pos = unique(unlist(trueQTL_position))
+    
+    # MSE for SNP
+    sse_snp =sum(B2F_star[-true.ME.pos]^2)
+    RMSE_SNP[r] = sqrt(sse_snp/(p-length(true.ME.pos)))
+    
+    print(sprintf("replicate %d is done.", r))
+    
+  }
+  
+  names(RMSE_SNP) = paste0("repeat",1:n_replicates)
+  write.csv(RMSE_SNP, sprintf("%s/RMSE_SNP.csv",Simulation_Folder))
+
+  return(list(RMSE_SNP=RMSE_SNP))
+}
+
+allFactor_SNPEffect_RMSE(nFactors, nTraits, n_repeat, nSNPs, folder = folder)

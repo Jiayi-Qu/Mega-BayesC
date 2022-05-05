@@ -1,0 +1,33 @@
+1. QC using 1003 individuals
+plink --bfile 1001genomes_onlyACGTN --keep all_ind_ID.txt --snps-only --maf 0.05 --geno 0.1 --indep-pairwise 500 100 0.8 --keep-allele-order --make-bed --set-missing-var-ids @:#  --out ST_GWAS_QC  
+
+2. Select SNPs as QTL in simulation
+# Select SNPs that pass the LD threshold
+plink --bfile ST_GWAS_QC --extract ST_GWAS_QC.prune.in --keep-allele-order --make-bed --out ST_GWAS_QC_pruned
+# Randomly Select 20 SNPs as QTL
+sort -R ST_GWAS_QC.prune.in | head -n 20 >  QTL_id_for_sim.txt
+#Extract the genotype matrix (M) for the QTLs 
+plink --bfile ST_GWAS_QC_pruned --extract QTL_id_for_sim.txt --keep-allele-order --make-bed  --recodeA --out QTL_sim_info
+# convert QTL_sim_info file into M matrix and simulate data in R 
+PhenoSim_no_linked_trait_NPLY_20QTL.R
+
+3. GWAS analysis using preselected individuals
+plink --bfile ST_GWAS_QC --keep preselection_ind.txt --keep-allele-order --make-bed --set-missing-var-ids @:# --out ST_GWAS_preselect_ind_QC
+# Generate GRM matrix
+gcta64 --bfile ST_GWAS_preselect_ind_QC --autosome --make-grm --out ST_GRM_GCTA_preselect_ind
+# Use GCTA to conduct GWAS
+gcta64 --mlma --bfile ST_GWAS_preselect_ind_QC --grm ST_GRM_GCTA_preselect_ind --pheno pheno_gcta_sim_preselect.phen --out gcta_gwas_res_preselect --thread-num 10
+
+4. Use LD-based clumping procedure to select potentially important SNPs
+plink --bfile ST_GWAS_preselect_ind_QC --keep-allele-order -clump-field p --clump gcta_gwas_res_preselect.mlma --clump-p1 0.01 --clump-r2 0.50 --out gcta_gwas_res_preselect_LDclump
+
+5. Select SNPs for following BayesC analysis
+PreselectionProcess.R
+plink --bfile ST_GWAS_QC --extract SNPs_selected_sim_LDclumped.txt --keep gene_exp_ind.txt --keep-allele-order --recodeA --out BayesMega_preselected_Matrix_LDclumped
+
+6. Run MegaBayesC 
+# Convert raw file to matrix in R
+BayesMega_X2F.R
+# Run MegaBayesC/ST-BayesC 
+BayesMega_sim_LDclumped.R/GEXP_STBayesC.jl
+
