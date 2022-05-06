@@ -1,0 +1,6 @@
+#!/bin/bash -l
+#SBATCH -p bmm
+#SBATCH -t 4-12:00:00
+#SBATCH -N 1
+#SBATCH -n 20
+#SBATCH --mem=80G
