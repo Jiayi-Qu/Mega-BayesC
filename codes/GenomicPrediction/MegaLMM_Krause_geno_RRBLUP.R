@@ -20,7 +20,7 @@ source('data_prep_Krause.R')
 # if(is.na(foldid)) foldid = 1
 # set.seed(foldid)
 
-runID = sprintf('MegaLMM_Krause_BayesC_L0.9_Mest_%d',foldid)
+runID = sprintf('MegaLMM_Krause_BayesC_L0.9_M0_%d',foldid)
 
   run_parameters = MegaLMM_control(
     which_sampler = list(Y=4,F=4),
@@ -51,7 +51,7 @@ runID = sprintf('MegaLMM_Krause_BayesC_L0.9_Mest_%d',foldid)
     ),
     B2_prior = list(
       sampler = sample_B2_prec_BayesC,
-      fixed_pi = NULL,
+      fixed_pi = 0,
       B2_F_df = 4,
       B2_F_scale = 1,
       B2_R_df = 4,
@@ -127,7 +127,7 @@ runID = sprintf('MegaLMM_Krause_BayesC_L0.9_Mest_%d',foldid)
   write.csv(get_posterior_mean(MegaLMM_state, F), sprintf('%s/Posterior/Posterior_F.csv',runID))
 
   print("csv saved.")
-  results = data.frame(Method = 'MegaLMM_BayesC_L0.9_Mest',
+  results = data.frame(Method = 'MegaLMM_BayesC_L0.9_M0',
                        pearson = cor(data$BLUP[nas],U[nas,1])/sqrt(h2_BLUE),
                        g_cor = estimate_gcor(data.frame(ID=data$GID[nas],obs = data$BLUP[nas],pred = U[nas,1]),Knn,sKnn,method = 'MCMCglmm',normalize = T)[['g_cor']])
   results$fold = foldid
